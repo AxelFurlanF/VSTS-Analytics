@@ -1,16 +1,16 @@
+var token = 'izfw53ajijl3ykshxwvsb5teg2jzjffokbprfsq3uzkjzdf6g43q'
+var projectsG;
+var usersG;
+var workloadG;
+
 $( document ).ready(function() {
-    projects = get_projects();
-    appendProjects(projects);
-    //workItems = get_workItems(projects);
-    //workLoad = get_workLoad(workItems);
+    $body = $("body");
+    get_users();
+    get_projects(appendProjects);
+    get_projects(get_workItems, plot_general)
     
-    users = get_users();
-    plot_general(0, users);
-    
-    console.log(users);
 });
 
-var token = 'izfw53ajijl3ykshxwvsb5teg2jzjffokbprfsq3uzkjzdf6g43q'
 
 
 function appendProjects(projects){
@@ -28,7 +28,10 @@ function get_users(){
         headers: {
                 'Authorization': 'Basic ' + btoa("" + ":" + token)
             },
-        async: true,
+        async: false,
+        beforeSend: function() {
+            $body.addClass("loading"); 
+        },
         success: function(data) {
             
                 data = data.value;
@@ -40,13 +43,13 @@ function get_users(){
             },
     });
     
-    
+    usersG=users;
     return users;
     
 }
 
 
-function get_projects(){
+function get_projects(callbackFunction, callbackFunction2){
     var projects = [];
     $.ajax({
         url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/_apis/projects?api-version=1.0',
@@ -55,6 +58,9 @@ function get_projects(){
                 'Authorization': 'Basic ' + btoa("" + ":" + token)
             },
         async: true,
+        beforeSend: function() {
+            $body.addClass("loading"); 
+        },
         success:function(data) {
             
                 data = data.value;
@@ -64,94 +70,93 @@ function get_projects(){
                 };
                 
                 console.log(projects);
-                get_workItems(projects);
+                callbackFunction(projects, callbackFunction2);
             },
     });
-    
+    projectsG=projects;
     return projects;
 }
 
-function get_workItems(projects){
-    var data;
+function get_workItems(projects, callbackFunction2){
+    var data = [];
     var workItems = [];
     
     var promises = [];
     for (var i = 0; i<projects.length; i++) {
         promises.push(
             $.ajax({
-            url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/'+projects[i]+'/_apis/wit/wiql?api-version=1.0',
-            type: 'POST',
-            contentType: "application/json",
-            dataType: 'json',
-            headers: {
-                    'Authorization': 'Basic ' + btoa("" + ":" + token)
-                },
-            data: JSON.stringify({"query":"Select * From WorkItems Where [System.WorkItemType] = 'Task' AND [State] <> 'Closed' AND [State] <> 'Removed' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc"
-                }),
-            async: false
+                url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/'+projects[i]+'/_apis/wit/wiql?api-version=1.0',
+                type: 'POST',
+                contentType: "application/json",
+                dataType: 'json',
+                headers: {
+                        'Authorization': 'Basic ' + btoa("" + ":" + token)
+                    },
+                data: JSON.stringify({"query":"Select * From WorkItems Where [System.WorkItemType] = 'Task' AND [State] = 'Closed' AND [State] <> 'Removed' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc"
+                    }),
+                async: true
             })
             
         );
     }
     $.when.apply($, promises).then(function() {
-        // returned data is in arguments[0][0], arguments[1][0], ... arguments[9][0]
-        // you can process it here
+        for (var j = 0; j<projects.length; j++) {
+            for (var k = 0; k<arguments[j][0].workItems.length; k++) {
+                workItems.push(arguments[j][0].workItems[k].id);
+            }
+        }
+        
+        get_workLoad(workItems, callbackFunction2);
+        
     }, function() {
         // error occurred
     });
-    
-    
-    
-    for (var i = 0; i<projects.length; i++){
-        //por cada projecto
-        data = $.parseJSON($.ajax({
-            url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/'+projects[i]+'/_apis/wit/wiql?api-version=1.0',
-            type: 'POST',
-            contentType: "application/json",
-            dataType: 'json',
-            headers: {
-                    'Authorization': 'Basic ' + btoa("" + ":" + token)
-                },
-            data: JSON.stringify({"query":"Select * From WorkItems Where [System.WorkItemType] = 'Task' AND [State] <> 'Closed' AND [State] <> 'Removed' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc"
-                }),
-            async: false
-        }).responseText);
-        
-        data = data.workItems;
-        
-        for (var j = 0; j<data.length; j++){
-            workItems.push(data[j].id);
-        };
-    };
     console.log(workItems);
     return workItems;
     
 }
 
 
-function get_workLoad(workItems){
+function get_workLoad(workItems, callbackFunction){
     var data;
     var workLoad = [];
     length = workItems.length;
+    
+    var promises = [];
     for (var i = 0; i<length; i+=200){
     //recorrer de a tandas de a 200
-        data = $.parseJSON($.ajax({
-            url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/_apis/wit/WorkItems?ids='+ workItems.slice(i,i+200).join(",") +'&fields=System.Title,System.AssignedTo,System.State,Microsoft.VSTS.Scheduling.OriginalEstimate,Microsoft.VSTS.Scheduling.CompletedWork,Microsoft.VSTS.Scheduling.RemainingWork,System.TeamProject',
-            type: 'GET',
-            contentType: "application/json",
-            dataType: 'json',
-            headers: {
+        promises.push(
+            $.ajax({
+                url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/_apis/wit/WorkItems?ids='+ workItems.slice(i,i+200).join(",") +'&fields=System.Title,System.AssignedTo,System.State,Microsoft.VSTS.Scheduling.OriginalEstimate,Microsoft.VSTS.Scheduling.CompletedWork,Microsoft.VSTS.Scheduling.RemainingWork,System.TeamProject',
+                type: 'GET',
+                contentType: "application/json",
+                dataType: 'json',
+                headers: {
                     'Authorization': 'Basic ' + btoa("" + ":" + token)
                 },
-            async: false
-        }).responseText);
+                async: true
+            })
+        );
+    }   
+    $.when.apply($, promises).then(function() {
+        $body.removeClass("loading");
         
-        data = data.value;
-        
-        for (var j = 0; j<data.length; j++){
-            workLoad.push(data[j].fields);
+        for (var j = 0; j<arguments.length; j++){
+            for (var k = 0; k<arguments[j][0].value.length; k++) {
+                workLoad.push(arguments[j][0].value[k].fields);
+            }
         };
-    }
+        
+        callbackFunction(workLoad);
+        console.log(workLoad);
+        
+        workloadG = workLoad;
+        return workLoad;
+        
+    }, function() {
+        //error
+    });
+    
     
     console.log(workLoad);
     return workLoad;
@@ -160,7 +165,8 @@ function get_workLoad(workItems){
 
 
 
-function plot_general(workLoad, users){
+function plot_general(workLoad){
+    users = usersG;
     oEstimate = [];
     cWork=[];
     deviation = [];
@@ -180,29 +186,29 @@ function plot_general(workLoad, users){
         
         oEstimate[j] += oe= workLoad[i]["Microsoft.VSTS.Scheduling.OriginalEstimate"] || 0;
         cWork[j] += cw = workLoad[i]["Microsoft.VSTS.Scheduling.CompletedWork"] || 0;
-        deviation[j]= oe - cw;
+        deviation[j] += oe - cw;
     }
     
     var trace1 = {
     x: users,
-    //y: oEstimate,
-    y: [0,1,2,3,4,5,6],
+    y: oEstimate,
+    //y: [0,1,2,3,4,5,6],
     name: 'Original Estimate',
     type: 'bar'
     };
 
     var trace2 = {
     x: users,
-    //y: cWork,
-    y: [0*2,1*2,2*2,3*2,4*2,5*2,6*2],
+    y: cWork,
+    //y: [0*2,1*2,2*2,3*2,4*2,5*2,6*2],
     name: 'Completed Work',
     type: 'bar'
     };
 
     var trace3 = {
     x: users,
-    //y: deviation,
-    y: [0*2,1*2,2*2,3*2,4*2,5*2,6*2],
+    y: deviation,
+    //y: [0*2,1*2,2*2,3*2,4*2,5*2,6*2],
     name: 'Desviacion',
     type: 'bar'
     };
