@@ -7,7 +7,8 @@ $( document ).ready(function() {
     $body = $("body");
     get_users();
     get_projects(appendProjects);
-    get_projects(get_workItems, plot_general)
+    get_workItems(plot_general);
+
     
 });
 
@@ -15,10 +16,33 @@ $( document ).ready(function() {
 
 function appendProjects(projects){
     for (var i = 0; i<projects.length; i++){
-        $("#proyectos").append('<button class="dropdown-item" type="button">'+ projects[i] +'</button>');
+        $("#proyectos").append('<button class="dropdown-item btnProyecto" type="button">'+ projects[i] +'</button>');
     }
+    
+    $('.btnProyecto').on('click',function(event) {
+        var jthis = $(this);
+        var project = jthis.text();
+        
+        if(project){
+            projectWorkItems = change_data(project);
+            plot_general(projectWorkItems);
+        }
+    });
 }
 
+function change_data(project){
+    var projectWorkItems = [];
+    
+    if (project=="Todos") projectWorkItems=workloadG;
+    else
+    for (var i = 0; i<workloadG.length; i++){
+        if(workloadG[i]["System.TeamProject"]==project){
+            projectWorkItems.push(workloadG[i]);
+        }
+    }
+    
+    return projectWorkItems;
+}
 
 function get_users(){
     var users=[];
@@ -77,40 +101,38 @@ function get_projects(callbackFunction, callbackFunction2){
     return projects;
 }
 
-function get_workItems(projects, callbackFunction2){
+function get_workItems(callbackFunction2){
     var data = [];
     var workItems = [];
     
     var promises = [];
-    for (var i = 0; i<projects.length; i++) {
-        promises.push(
-            $.ajax({
-                url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/'+projects[i]+'/_apis/wit/wiql?api-version=1.0',
-                type: 'POST',
-                contentType: "application/json",
-                dataType: 'json',
-                headers: {
-                        'Authorization': 'Basic ' + btoa("" + ":" + token)
-                    },
-                data: JSON.stringify({"query":"Select * From WorkItems Where [System.WorkItemType] = 'Task' AND [State] = 'Closed' AND [State] <> 'Removed' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc"
-                    }),
-                async: true
-            })
+    
+    $.ajax({
+        url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/_apis/wit/wiql?api-version=1.0',
+        type: 'POST',
+        contentType: "application/json",
+        dataType: 'json',
+        headers: {
+                'Authorization': 'Basic ' + btoa("" + ":" + token)
+            },
+        data: JSON.stringify({"query":"Select * From WorkItems Where [System.WorkItemType] = 'Task' AND [State] = 'Closed' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc"
+            }),
+        async: true,
+        success:function(data) {
             
-        );
-    }
-    $.when.apply($, promises).then(function() {
-        for (var j = 0; j<projects.length; j++) {
-            for (var k = 0; k<arguments[j][0].workItems.length; k++) {
-                workItems.push(arguments[j][0].workItems[k].id);
-            }
-        }
-        
-        get_workLoad(workItems, callbackFunction2);
-        
-    }, function() {
-        // error occurred
+                data = data.workItems;
+                
+                for (var i = 0; i<data.length; i++){
+                    workItems.push(data[i].id);
+                };
+                
+                get_workLoad(workItems, callbackFunction2);
+            },
     });
+            
+
+    
+
     console.log(workItems);
     return workItems;
     
@@ -127,7 +149,7 @@ function get_workLoad(workItems, callbackFunction){
     //recorrer de a tandas de a 200
         promises.push(
             $.ajax({
-                url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/_apis/wit/WorkItems?ids='+ workItems.slice(i,i+200).join(",") +'&fields=System.Title,System.AssignedTo,System.State,Microsoft.VSTS.Scheduling.OriginalEstimate,Microsoft.VSTS.Scheduling.CompletedWork,Microsoft.VSTS.Scheduling.RemainingWork,System.TeamProject',
+                url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/_apis/wit/WorkItems?ids='+ workItems.slice(i,i+199).join(",") +'&fields=System.Title,System.AssignedTo,System.State,Microsoft.VSTS.Scheduling.OriginalEstimate,Microsoft.VSTS.Scheduling.CompletedWork,Microsoft.VSTS.Scheduling.RemainingWork,System.TeamProject',
                 type: 'GET',
                 contentType: "application/json",
                 dataType: 'json',

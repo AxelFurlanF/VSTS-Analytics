@@ -36,20 +36,22 @@
         Proyectos
     </button>
     <div id = "proyectos" class="dropdown-menu dropdown-menu-right">
+        <button class="dropdown-item btnProyecto" type="button">Todos</button>
     </div>
   
   </div>
   
  <!--dropdown-->
     <div class="btn-group">
-        <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <button type="button" class="btn btn-info dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
             Estado
         </button>
 
         <div id = "estados" class="dropdown-menu dropdown-menu-right">
-                <button class="dropdown-item" type="button"> New </button>
-                <button class="dropdown-item" type="button"> Active </button>
-                <button class="dropdown-item" type="button"> Closed </button>
+                <button class="dropdown-item" data-estado="*" type="button"> New </button>
+                <button class="dropdown-item" data-estado="*" type="button"> Active </button>
+                <button class="dropdown-item" data-estado="*" type="button"> Closed </button>
+                <button class="dropdown-item" data-estado="*" type="button"> Todo </button>
         </div>
     </div>
   
