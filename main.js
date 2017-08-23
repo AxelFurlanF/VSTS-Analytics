@@ -2,6 +2,11 @@ var token = 'izfw53ajijl3ykshxwvsb5teg2jzjffokbprfsq3uzkjzdf6g43q'
 var projectsG;
 var usersG;
 var workloadG;
+var actualWorkload;
+
+var msgProject="Todos";
+var msgState="Todo";
+
 
 $( document ).ready(function() {
     $body = $("body");
@@ -9,10 +14,31 @@ $( document ).ready(function() {
     get_projects(appendProjects);
     get_workItems(plot_general);
 
-    
+    editMsg();
+/*----------------Capturas de eventos---------------*/
+    $('.btnEstado').on('click',function(event) {
+        var jthis = $(this);
+        var estado = jthis.text();
+        
+        if(estado){
+            msgState=estado;
+            editMsg();
+            
+            stateWorkItems = change_state(estado);
+            plot_general(stateWorkItems);
+
+        }
+    });
 });
 
+function editMsg(){
+    var mensaje = "Mostrando ";
+    
+    if (msgState=="Todo") mensaje = mensaje + "todos los issues "; else mensaje = mensaje + " los issues "+msgState;
+    if (msgProject=="Todos") mensaje = mensaje + " de todos los proyectos"; else mensaje = mensaje + " del proyecto "+msgProject;
 
+    $('#msg').text(mensaje);
+}
 
 function appendProjects(projects){
     for (var i = 0; i<projects.length; i++){
@@ -24,13 +50,34 @@ function appendProjects(projects){
         var project = jthis.text();
         
         if(project){
-            projectWorkItems = change_data(project);
+            msgProject=project;
+            editMsg();          
+            
+            projectWorkItems = change_project(project);
+            actualWorkload=projectWorkItems;
             plot_general(projectWorkItems);
+
         }
     });
 }
 
-function change_data(project){
+
+function change_state(estado){
+    var stateWorkItems = [];
+    
+    if (estado=="Todo") stateWorkItems=actualWorkload;
+    else
+    for (var i = 0; i<actualWorkload.length; i++){
+        if(actualWorkload[i]["System.State"]==estado){
+            stateWorkItems.push(actualWorkload[i]);
+        }
+    }
+    
+    return stateWorkItems;
+}
+
+
+function change_project(project){
     var projectWorkItems = [];
     
     if (project=="Todos") projectWorkItems=workloadG;
@@ -115,7 +162,7 @@ function get_workItems(callbackFunction2){
         headers: {
                 'Authorization': 'Basic ' + btoa("" + ":" + token)
             },
-        data: JSON.stringify({"query":"Select * From WorkItems Where [System.WorkItemType] = 'Task' AND [State] = 'Closed' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc"
+        data: JSON.stringify({"query":"Select * From WorkItems Where [System.WorkItemType] = 'Task' order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc"
             }),
         async: true,
         success:function(data) {
@@ -149,7 +196,7 @@ function get_workLoad(workItems, callbackFunction){
     //recorrer de a tandas de a 200
         promises.push(
             $.ajax({
-                url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/_apis/wit/WorkItems?ids='+ workItems.slice(i,i+199).join(",") +'&fields=System.Title,System.AssignedTo,System.State,Microsoft.VSTS.Scheduling.OriginalEstimate,Microsoft.VSTS.Scheduling.CompletedWork,Microsoft.VSTS.Scheduling.RemainingWork,System.TeamProject',
+                url: 'https://perceptiongroup.visualstudio.com/DefaultCollection/_apis/wit/WorkItems?ids='+ workItems.slice(i,i+199).join(",") +'&fields=System.Title,System.AssignedTo,System.State,Microsoft.VSTS.Scheduling.OriginalEstimate,Microsoft.VSTS.Scheduling.CompletedWork,Microsoft.VSTS.Scheduling.RemainingWork,System.TeamProject,System.State,System.IterationPath',
                 type: 'GET',
                 contentType: "application/json",
                 dataType: 'json',
@@ -173,6 +220,7 @@ function get_workLoad(workItems, callbackFunction){
         console.log(workLoad);
         
         workloadG = workLoad;
+        actualWorkload=workloadG;
         return workLoad;
         
     }, function() {
@@ -227,17 +275,28 @@ function plot_general(workLoad){
     type: 'bar'
     };
 
+    if (msgState!="Closed") name = "Remaining Work"; else name = "Desviacion";
     var trace3 = {
     x: users,
     y: deviation,
     //y: [0*2,1*2,2*2,3*2,4*2,5*2,6*2],
-    name: 'Desviacion',
+    name: name,
     type: 'bar'
     };
     
     var data = [trace1, trace2, trace3];
 
-    var layout = {barmode: 'group'};
+    var layout = {
+        barmode: 'group',
+        yaxis: {
+            title: 'Horas',
+            titlefont: {
+            family: 'Arial, Helvetica, sans-serif',
+            size: 18,
+            color: '#7f7f7f'
+            }
+        }
+    };
 
     Plotly.newPlot('plot', data, layout);
     

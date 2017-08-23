@@ -48,10 +48,10 @@
         </button>
 
         <div id = "estados" class="dropdown-menu dropdown-menu-right">
-                <button class="dropdown-item" data-estado="*" type="button"> New </button>
-                <button class="dropdown-item" data-estado="*" type="button"> Active </button>
-                <button class="dropdown-item" data-estado="*" type="button"> Closed </button>
-                <button class="dropdown-item" data-estado="*" type="button"> Todo </button>
+                <button class="dropdown-item btnEstado" type="button">New</button>
+                <button class="dropdown-item btnEstado" type="button">Active</button>
+                <button class="dropdown-item btnEstado" type="button">Closed</button>
+                <button class="dropdown-item btnEstado" type="button">Todo</button>
         </div>
     </div>
   
@@ -60,12 +60,12 @@
 </nav>
 
 <h2>Carga General</h2>
-<!-- Plots go in blank <div> elements. 
-    You can size them in the plot layout,
-    or give the div a size as shown here.
--->
-
+<h5 id = 'msg'></h3>
 <div id="plot" style="width:100%;height:400px;"></div>
+
+<h2>Información sobre issues</h2>
+<div id="plotIssues" style="width:100%;height:400px;"></div>
+
 <div class="modal"><!-- Place at bottom of page --></div>
 </body>
 </html>
