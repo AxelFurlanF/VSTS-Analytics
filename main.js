@@ -63,6 +63,7 @@ function appendProjects(projects){
         
         if(project){
             msgProject=project;
+            msgState="Todo";
             editMsg();          
             
             projectWorkItems = change_project(project);
@@ -253,7 +254,7 @@ function get_workLoad(workItems, callbackFunction){
 
 //plot de horas general
 function plot_general(workLoad){
-    users = usersG;
+    var users = usersG;
     oEstimate = [];
     cWork=[];
     deviation = [];
@@ -326,25 +327,57 @@ function plot_general(workLoad){
 //plot de issues
 function plot_issues(workLoad){
     var countNew = 0, countActive = 0, countClosed = 0;
+    var users = usersG;
+    var issuesPersona = [];
+    
+    
+    for (var i = 0; i < users.length; i++) {
+        issuesPersona[i] = 0; 
+    }
+    
     
     for (var i = 0; i<workLoad.length; i++){
         state = workLoad[i]["System.State"];
         state=='New'? countNew++ : 0;
         state=='Active'? countActive++ : 0;
         state=='Closed'? countClosed++ : 0;
+        
+        assignedTo = workLoad[i]["System.AssignedTo"];
+        if (!assignedTo) continue;
+        user = assignedTo.split(" <")[0];
+        
+        j = users.indexOf(user);
+        issuesPersona[j]++;
     }    
     
-    var data = [{
-    values: [countNew, countActive, countClosed],
-    labels: ['New', 'Active', 'Closed'],
-    type: 'pie',
-    hoverinfo: "percent",
-    marker: {"line": {"width": 0}, "colors": ["rgb(255,255,204)", "rgb(161,218,180)", "rgb(65,182,196)", "rgb(44,127,184)", "rgb(8,104,172)", "rgb(37,52,148)"]},
-    textinfo: "label+value"
-    }];
+    //sacar los usuarios que no tienen issues
+    var index = issuesPersona.indexOf(0);
+ 
+    if (index > -1) {
+       issuesPersona.splice(index, 1);
+    }
+   
+    var data_estados = [{
+        values: [countNew, countActive, countClosed],
+        labels: ['New', 'Active', 'Closed'],
+        type: 'pie',
+        hoverinfo: "percent",
+        marker: {"line": {"width": 0}, "colors": ["rgb(255,255,204)", "rgb(161,218,180)", "rgb(65,182,196)", "rgb(44,127,184)", "rgb(8,104,172)", "rgb(37,52,148)"]},
+        textinfo: "label+value"
+        }];
+    var data_personas = [{
+        values: issuesPersona,
+        labels: users,
+        type: 'pie',
+        hoverinfo: "percent",
+        marker: {"line": {"width": 0}, "colors": ["rgb(255,255,204)", "rgb(161,218,180)", "rgb(65,182,196)", "rgb(44,127,184)", "rgb(8,104,172)", "rgb(37,52,148)"]},
+        textinfo: "value"
+        }
+    ];
 
-    var layout = {"width": 350, "height": 350, "breakpoints": [], "title": "Por estado"}
+    //var layout = {"width": 400, "height": 350, "breakpoints": [], "title": "Por estado"}
 
-    Plotly.newPlot('plotIssues', data, layout);
+    Plotly.newPlot('plotIssuesEstados', data_estados, {"height": 350, "breakpoints": [], "title": "Por estado"});
+    Plotly.newPlot('plotIssuesPersonas', data_personas, {"height": 400, "breakpoints": [], "title": "Totales por persona"});
     
 }
