@@ -9,13 +9,17 @@ var msgState="Todo";
 
 
 $( document ).ready(function() {
+    
+/*---------------Inicio de la plataforma-------------- */
     $body = $("body");
     get_users();
     get_projects(appendProjects);
-    get_workItems(plot_general);
-
+    get_workItems(plot);
+    
+    
     editMsg();
 /*----------------Capturas de eventos---------------*/
+//cuando cambias el estado
     $('.btnEstado').on('click',function(event) {
         var jthis = $(this);
         var estado = jthis.text();
@@ -25,12 +29,19 @@ $( document ).ready(function() {
             editMsg();
             
             stateWorkItems = change_state(estado);
-            plot_general(stateWorkItems);
+            plot(stateWorkItems);
 
         }
     });
 });
 
+
+function plot(workload){
+    plot_general(workload);
+    plot_issues(actualWorkload);
+}
+
+//modifica el mensaje debajo del título
 function editMsg(){
     var mensaje = "Mostrando ";
     
@@ -40,11 +51,12 @@ function editMsg(){
     $('#msg').text(mensaje);
 }
 
+//appendea proyectos al dropdown
 function appendProjects(projects){
     for (var i = 0; i<projects.length; i++){
         $("#proyectos").append('<button class="dropdown-item btnProyecto" type="button">'+ projects[i] +'</button>');
     }
-    
+    //cuando cambias el proyecto
     $('.btnProyecto').on('click',function(event) {
         var jthis = $(this);
         var project = jthis.text();
@@ -55,13 +67,13 @@ function appendProjects(projects){
             
             projectWorkItems = change_project(project);
             actualWorkload=projectWorkItems;
-            plot_general(projectWorkItems);
+            plot(projectWorkItems);
 
         }
     });
 }
 
-
+//cambia el estado y actualiza
 function change_state(estado){
     var stateWorkItems = [];
     
@@ -76,7 +88,7 @@ function change_state(estado){
     return stateWorkItems;
 }
 
-
+//cambia el proyecto y actualiza
 function change_project(project){
     var projectWorkItems = [];
     
@@ -91,6 +103,7 @@ function change_project(project){
     return projectWorkItems;
 }
 
+//agarra users
 function get_users(){
     var users=[];
     $.ajax({
@@ -120,6 +133,7 @@ function get_users(){
 }
 
 
+//agarra proyectos
 function get_projects(callbackFunction, callbackFunction2){
     var projects = [];
     $.ajax({
@@ -148,6 +162,7 @@ function get_projects(callbackFunction, callbackFunction2){
     return projects;
 }
 
+//agarra IDs de issues
 function get_workItems(callbackFunction2){
     var data = [];
     var workItems = [];
@@ -185,7 +200,7 @@ function get_workItems(callbackFunction2){
     
 }
 
-
+//agarra los datos de los issues por ID
 function get_workLoad(workItems, callbackFunction){
     var data;
     var workLoad = [];
@@ -216,11 +231,13 @@ function get_workLoad(workItems, callbackFunction){
             }
         };
         
+        workloadG = workLoad;
+        actualWorkload=workloadG;
+        
         callbackFunction(workLoad);
         console.log(workLoad);
         
-        workloadG = workLoad;
-        actualWorkload=workloadG;
+        
         return workLoad;
         
     }, function() {
@@ -234,7 +251,7 @@ function get_workLoad(workItems, callbackFunction){
 }
 
 
-
+//plot de horas general
 function plot_general(workLoad){
     users = usersG;
     oEstimate = [];
@@ -264,7 +281,8 @@ function plot_general(workLoad){
     y: oEstimate,
     //y: [0,1,2,3,4,5,6],
     name: 'Original Estimate',
-    type: 'bar'
+    type: 'bar',
+    marker: {"color": "rgb(146, 210, 255)"}
     };
 
     var trace2 = {
@@ -272,7 +290,8 @@ function plot_general(workLoad){
     y: cWork,
     //y: [0*2,1*2,2*2,3*2,4*2,5*2,6*2],
     name: 'Completed Work',
-    type: 'bar'
+    type: 'bar',
+    marker: {"color": "rgb(14, 181, 255)"}
     };
 
     if (msgState!="Closed") name = "Remaining Work"; else name = "Desviacion";
@@ -281,7 +300,8 @@ function plot_general(workLoad){
     y: deviation,
     //y: [0*2,1*2,2*2,3*2,4*2,5*2,6*2],
     name: name,
-    type: 'bar'
+    type: 'bar',
+    marker: {"color": "rgb(31, 62, 249)"}
     };
     
     var data = [trace1, trace2, trace3];
@@ -299,5 +319,32 @@ function plot_general(workLoad){
     };
 
     Plotly.newPlot('plot', data, layout);
+    
+}
+
+
+//plot de issues
+function plot_issues(workLoad){
+    var countNew = 0, countActive = 0, countClosed = 0;
+    
+    for (var i = 0; i<workLoad.length; i++){
+        state = workLoad[i]["System.State"];
+        state=='New'? countNew++ : 0;
+        state=='Active'? countActive++ : 0;
+        state=='Closed'? countClosed++ : 0;
+    }    
+    
+    var data = [{
+    values: [countNew, countActive, countClosed],
+    labels: ['New', 'Active', 'Closed'],
+    type: 'pie',
+    hoverinfo: "percent",
+    marker: {"line": {"width": 0}, "colors": ["rgb(255,255,204)", "rgb(161,218,180)", "rgb(65,182,196)", "rgb(44,127,184)", "rgb(8,104,172)", "rgb(37,52,148)"]},
+    textinfo: "label+value"
+    }];
+
+    var layout = {"width": 350, "height": 350, "breakpoints": [], "title": "Por estado"}
+
+    Plotly.newPlot('plotIssues', data, layout);
     
 }
